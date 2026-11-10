@@ -881,6 +881,8 @@ body.is-gated #siteHeader, body.is-gated main, body.is-gated #siteFooter {
 }
 .gate-card h2 { margin-bottom: .6rem; font-size: clamp(1.45rem, 1.15rem + 1vw, 1.85rem); }
 .gate-desc { margin-bottom: 1.5rem; color: var(--muted); }
+.gate-close { top: .85rem; right: .85rem; width: 34px; height: 34px; font-size: 1.2rem; }
+.gate-card h2 { padding-right: 2.25rem; }
 
 /* ---------- I. Pop-up profil dosen ---------- */
 body.modal-open { overflow: hidden; }

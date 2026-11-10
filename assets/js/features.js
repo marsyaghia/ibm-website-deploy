@@ -238,7 +238,7 @@
   }
 
   /* ===================================================================
-     5. VISITOR GATE — wajib isi data sebelum mengakses Home
+     5. VISITOR GATE — pop-up data pengunjung di Home (bisa dilewati lewat tombol X)
         • Data dikirim ke tabel Supabase `visitor_leads` (hanya INSERT untuk publik).
         • Setelah berhasil, pengunjung diingat di browser (default 30 hari).
         • Bila server tidak terjangkau, data disimpan lokal & dikirim ulang nanti;
@@ -295,15 +295,31 @@
     el.hidden = !msg;
   }
 
+  // Pengunjung boleh melewati formulir (tombol X / Esc). Dilewati hanya untuk sesi ini,
+  // jadi pop-up muncul lagi pada kunjungan berikutnya.
+  var SKIP_KEY = 'ibm_visitor_skip';
+  function isSkipped() {
+    try { return sessionStorage.getItem(SKIP_KEY) === '1'; } catch (e) { return false; }
+  }
+  function skipGate() {
+    try { sessionStorage.setItem(SKIP_KEY, '1'); } catch (e) { /* mode privat */ }
+    closeGate();
+  }
+
   if (gate && gateForm && typeof HTMLDialogElement !== 'undefined') {
-    // Tidak bisa ditutup dengan Esc
-    gate.addEventListener('cancel', function (e) { e.preventDefault(); });
-    // Browser tertentu menutup dialog pada Esc kedua: buka kembali selama formulir belum diisi
+    var gateCloseBtn = $('#gateClose');
+    if (gateCloseBtn) {
+      gateCloseBtn.setAttribute('aria-label', t('home.gate.close_label', 'Close'));
+      gateCloseBtn.addEventListener('click', skipGate);
+    }
+    // Esc = sama dengan tombol X
+    gate.addEventListener('cancel', function (e) { e.preventDefault(); skipGate(); });
+    // Jaga-jaga: bila dialog tertutup dengan cara lain, pastikan halaman tidak tetap terkunci
     gate.addEventListener('close', function () {
-      if (!gateDone) setTimeout(function () { if (!gateDone && !gate.open) gate.showModal(); }, 0);
+      if (!gateDone) { gateDone = true; lockPage(false); }
     });
 
-    if (!isRemembered()) {
+    if (!isRemembered() && !isSkipped()) {
       lockPage(true);
       gate.showModal();
       var first = $('input[name="full_name"]', gateForm);
