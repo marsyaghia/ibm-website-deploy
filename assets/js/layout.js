@@ -52,10 +52,16 @@
     return html + '</ul></div>';
   }
 
+  // Logo header: dua file, CSS menampilkan salah satunya sesuai data-theme di <html>.
+  //   tema terang → assets/img/logo-light.svg   |   tema gelap → assets/img/logo-dark.svg
+  // Bisa ditimpa dari CMS lewat kunci global.brand.logo_light / global.brand.logo_dark.
   function brandHTML(t) {
-    var logo = safeUrl(t('global.brand.logo', 'assets/img/logo-mark.svg'));
+    var light = safeUrl(t('global.brand.logo_light', 'assets/img/logo-light.svg?v=2'));
+    var dark = safeUrl(t('global.brand.logo_dark', 'assets/img/logo-dark.svg?v=2')) || light;
+    var alt = esc(t('global.brand.logo_alt', 'Logo'));
     return '<a href="index.html" class="brand">' +
-      (logo ? '<img class="brand-mark" src="' + esc(logo) + '" alt="' + esc(t('global.brand.logo_alt', 'Logo')) + '" height="52">' : '') +
+      (light ? '<img class="brand-mark brand-mark-light" src="' + esc(light) + '" alt="' + alt + '" width="52" height="52">' +
+        '<img class="brand-mark brand-mark-dark" src="' + esc(dark) + '" alt="' + alt + '" width="52" height="52">' : '') +
       '<span class="brand-text" translate="no"><strong>' + esc(t('global.brand.name', 'IBM Institut Asia')) + '</strong>' +
       '<small>' + esc(t('global.brand.subname', 'Malang')) + '</small></span></a>';
   }
