@@ -262,9 +262,15 @@
     return carousel(slides, 'carousel-why', s);
   }
 
-  function partnerItem(r, hidden, cls) {
-    var img = imgTag(r.logo_url, hidden ? '' : r.name, '');
-    if (!img) return '';
+  // fit = logo di strip bergulir: dibungkus .logo-fit agar ui.js bisa memotong ruang kosong di file
+  // dan menyamakan bobot visualnya (lihat "Penyelaras logo partner" di ui.js). crossorigin diperlukan
+  // untuk membaca piksel; bila server logo tidak mengizinkan CORS, ui.js memuat ulang tanpa atribut ini.
+  function partnerItem(r, hidden, cls, fit) {
+    var u = safeUrl(r.logo_url);
+    if (!u) return '';
+    var img = fit
+      ? '<span class="logo-fit"><img src="' + esc(u) + '" alt="' + esc(hidden ? '' : r.name) + '" crossorigin="anonymous" decoding="async" fetchpriority="low"></span>'
+      : imgTag(u, hidden ? '' : r.name, '');
     var url = safeUrl(r.website_url);
     var attrs = hidden ? ' tabindex="-1"' : '';
     var c = 'partner' + (cls ? ' ' + cls : '');
@@ -287,8 +293,8 @@
     }
     if (others.length) {
       el.style.setProperty('--marquee-duration', Math.max(14, others.length * 3.2) + 's');   // nilai awal; ui.js menyetel ulang berdasarkan lebar nyata
-      var a = others.map(function (r) { return partnerItem(r, false); }).join('');
-      var b = others.map(function (r) { return partnerItem(r, true); }).join('');
+      var a = others.map(function (r) { return partnerItem(r, false, '', true); }).join('');
+      var b = others.map(function (r) { return partnerItem(r, true, '', true); }).join('');
       h += '<div class="marquee"><div class="marquee-group">' + a + '</div><div class="marquee-group" aria-hidden="true">' + b + '</div></div>';
     }
     return h;
@@ -309,7 +315,7 @@
         '<span class="lecturer-photo">' + imgTag(r.photo_url, pre + ' ' + r.name, ' width="320" height="400"') + '</span>' +
         '<span class="lecturer-body"><strong>' + esc(r.name) + '</strong>' +
         (personTitle(r) ? '<span class="lecturer-role">' + esc(personTitle(r)) + '</span>' : '') +
-        '<span class="lecturer-cta">' + esc(s.t('global.profile_modal.view_label', 'View profile')) + ARROW_UR + '</span></span></button></li>';
+        '<span class="lecturer-cta">' + esc(s.t('global.profile_modal.view_label', 'View profile')) + '</span></span></button></li>';
     }).join('');
     return carousel(slides, 'carousel-lecturers', s);
   }
@@ -325,7 +331,7 @@
       '<div class="person-info"><h3>' + esc(r.name) + '</h3>' +
       (title ? '<p class="person-program">' + esc(title) + '</p>' : '') +
       (sub ? '<p class="person-detail">' + esc(sub) + '</p>' : '') +
-      (lect ? '<span class="person-cta">' + esc(s.t('global.profile_modal.view_label', 'View profile')) + ARROW_UR + '</span>' : '') +
+      (lect ? '<span class="person-cta">' + esc(s.t('global.profile_modal.view_label', 'View profile')) + '</span>' : '') +
       '</div></article>';
   }
 
@@ -555,7 +561,7 @@
     return rows.map(function (r, i) {
       var url = safeUrl(r.link_url);
       var link = url && r.link_label
-        ? '<a class="btn btn-gold btn-sm step-link" href="' + esc(url) + '"' + (isExternal(url) ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + esc(r.link_label) + ARROW_UR + '</a>'
+        ? '<a class="btn btn-gold btn-sm step-link" href="' + esc(url) + '"' + (isExternal(url) ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + esc(r.link_label) + (isExternal(url) ? ARROW_UR : '') + '</a>'
         : '';
       return '<li><span class="step-no">' + (i + 1) + '</span><div><h3>' + esc(r.title) + '</h3><p>' + esc(r.description) + '</p>' + link + '</div></li>';
     }).join('');

@@ -35,7 +35,7 @@
     if (!clockFmt) return '';
     var p = {};
     clockFmt.formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
-    return p.weekday + ', ' + p.day + ' ' + p.month + ' ' + p.year + ' · ' + p.hour + ':' + p.minute + ':' + p.second + ' WIB';
+    return p.weekday + ', ' + p.day + ' ' + p.month + ' ' + p.year + ', ' + p.hour + ':' + p.minute + ':' + p.second + ' WIB';
   }
   function tickClock() {
     var txt = clockText();

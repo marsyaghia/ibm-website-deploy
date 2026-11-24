@@ -514,9 +514,107 @@
     });
   }
 
+  /* ---------- Penyelaras logo partner ----------
+     File logo partner berbeda-beda: ada yang penuh, ada yang dikelilingi ruang kosong lebar
+     (mis. kanvas 500×500 dengan logo setinggi 80px). Untuk setiap logo:
+       1. Batas gambar sebenarnya dideteksi dari pikselnya (latar transparan atau latar polos).
+       2. Hanya area itu yang ditampilkan (dipotong lewat posisi <img> di dalam .logo-fit).
+       3. Ukuran diseimbangkan menurut rasio: lebar = dasar × rasio^0.55. Logo bulat/kotak dan
+          logo teks lebar jadi terlihat sama "berat"; tinggi mengikuti rasio (aspect-ratio).
+     Ukuran dasar & jarak diatur di CSS (--logo-base, --logo-gap), jadi responsif tanpa JS.
+     Hasil ukur disimpan di localStorage agar kunjungan berikutnya langsung rapi tanpa geser. */
+  var FIT_KEY = 'ibm_logo_fit_v1';
+  var fitCache = {};
+  try { fitCache = JSON.parse(localStorage.getItem(FIT_KEY) || '{}') || {}; } catch (e) { fitCache = {}; }
+  var saveTimer;
+  function saveCache() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      try { localStorage.setItem(FIT_KEY, JSON.stringify(fitCache)); } catch (e) { /* kuota / mode privat */ }
+    }, 400);
+  }
+
+  function measure(img) {
+    var nw = img.naturalWidth, nh = img.naturalHeight;
+    if (!nw || !nh) return null;
+    var m = { nw: nw, nh: nh, x: 0, y: 0, w: nw, h: nh };
+    try {
+      var s = Math.min(1, 240 / Math.max(nw, nh));          // cukup diperiksa pada ±240px
+      var cw = Math.max(1, Math.round(nw * s)), ch = Math.max(1, Math.round(nh * s));
+      var c = doc.createElement('canvas'); c.width = cw; c.height = ch;
+      var ctx = c.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, cw, ch);
+      var d = ctx.getImageData(0, 0, cw, ch).data;
+      var r0 = d[0], g0 = d[1], b0 = d[2], solidBg = d[3] > 200;   // piksel pojok = warna latar
+      var minX = cw, minY = ch, maxX = -1, maxY = -1;
+      for (var y = 0; y < ch; y++) {
+        for (var x = 0; x < cw; x++) {
+          var k = (y * cw + x) * 4, a = d[k + 3];
+          var ink = solidBg
+            ? a > 24 && (Math.abs(d[k] - r0) + Math.abs(d[k + 1] - g0) + Math.abs(d[k + 2] - b0)) > 48
+            : a > 24;
+          if (ink) {
+            if (x < minX) minX = x; if (x > maxX) maxX = x;
+            if (y < minY) minY = y; if (y > maxY) maxY = y;
+          }
+        }
+      }
+      if (maxX >= minX && maxY >= minY) {
+        var px = 1 / s;                                        // satu piksel sampel dalam ukuran asli
+        m.x = Math.max(0, minX / s - px); m.y = Math.max(0, minY / s - px);
+        m.w = Math.min(nw - m.x, (maxX - minX + 1) / s + 2 * px);
+        m.h = Math.min(nh - m.y, (maxY - minY + 1) / s + 2 * px);
+      }
+    } catch (e) { /* tanpa izin CORS: tampilkan file utuh, tetap diseimbangkan */ }
+    return m;
+  }
+
+  function apply(img, m) {
+    var box = img.parentNode;
+    if (!box || !box.classList || !box.classList.contains('logo-fit')) return;
+    var ratio = Math.min(7, Math.max(.5, m.w / m.h));
+    box.style.setProperty('--fw', Math.pow(ratio, .55).toFixed(3));
+    box.style.setProperty('--ar', (m.w / m.h).toFixed(4));
+    img.style.width = (m.nw / m.w * 100).toFixed(3) + '%';
+    img.style.left = (-m.x / m.w * 100).toFixed(3) + '%';
+    img.style.top = (-m.y / m.h * 100).toFixed(3) + '%';
+    box.classList.add('is-fit');
+  }
+
+  function fit(img) {
+    var src = img.currentSrc || img.src;
+    var m = fitCache[src];
+    if (!m && img.complete && img.naturalWidth) {
+      m = measure(img);
+      if (m) { fitCache[src] = m; saveCache(); }
+    }
+    if (m) apply(img, m);
+  }
+
+  function fitAll() {
+    var imgs = doc.querySelectorAll('.logo-fit img');
+    for (var i = 0; i < imgs.length; i++) fit(imgs[i]);
+  }
+
+  // load/error tidak "bubble": tangkap di fase capture untuk semua logo, termasuk hasil render ulang.
+  doc.addEventListener('load', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'IMG' && t.parentNode && t.parentNode.classList && t.parentNode.classList.contains('logo-fit')) {
+      fit(t); requestAnimationFrame(tune);
+    }
+  }, true);
+  doc.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'IMG' && t.hasAttribute('crossorigin') && t.closest && t.closest('.logo-fit')) {
+      t.removeAttribute('crossorigin');                       // server tanpa CORS: muat biasa saja
+      t.src = t.src;
+    }
+  }, true);
+
   var rt;
   window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(tune, 200); });
-  doc.addEventListener('cms:rendered', function () { requestAnimationFrame(tune); });
-  window.addEventListener('load', tune);
+  doc.addEventListener('cms:rendered', function () { fitAll(); requestAnimationFrame(tune); });
+  window.addEventListener('load', function () { fitAll(); tune(); });
   if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(tune);
+  fitAll();
 })();
